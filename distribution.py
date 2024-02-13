@@ -1,3 +1,4 @@
+import re
 import lupa
 from item import Item
 
@@ -58,7 +59,25 @@ class Distribution:
         'BeerEmpty': 'Empty_Bottle_(Alcohol)|Beer Empty',
         'BluePen': 'Pen',
         'RedPen': 'Pen',
-        'WateredCan': 'Watering Can'
+        'WateredCan': 'Watering Can',
+        'Mov_Microwave2': 'White Microwave',
+        'Mov_DegreeDoctor': 'Doctor Degree Certificate',
+        'Mov_DegreeSurgeon': 'Surgeon Degree Certificate',
+        'Mov_FlagAdmin': 'Administrative Flag',
+        'Mov_FlagUSA': 'USA Flag',
+        'Mov_FlagUSALarge': 'Stars & Stripes Flag',
+        'Mov_PosterDroids': 'Droids Poster',
+        'Mov_PosterElement': 'Element Poster',
+        'Mov_PosterMedical': 'Medical Poster',
+        'Mov_PosterOmega': 'Omega Poster',
+        'Mov_PosterPaws': 'Paws Poster',
+        'Mov_PosterPieBlue': 'Pie Blue Poster',
+        'Mov_PosterPiePink': 'Pie Pink Poster',
+        'Mov_PosterPieRed': 'Pie Red Poster',
+        'Mov_SignArmy': 'Army Property Sign',
+        'Mov_SignCitrus': 'Citrus Sign',
+        'Mov_SignRestricted': 'Restricted Area Sign',
+        'Mov_SignWarning': 'Warning Sign'
     }
 
     def __init__(self, node, is_procedural, procedural_distributions):
@@ -160,39 +179,70 @@ class Distribution:
         id = id.replace('_', ' ')  # Replace underscores with spaces for readability
         return id
 
+    import re
+
     def cleanup_item_id(self, raw_item_id):
-        # Check each key in the ITEM_ID_TRANSLATION dictionary to see if it's found in the raw item ID
-        for key, value in self.ITEM_ID_TRANSLATION.items():
-            if key in raw_item_id:
-                # If a match is found anywhere in the raw item ID, return the corresponding translated value
-                return value
+        print(f"Debug: Starting cleanup for item ID: {raw_item_id}")  # Debugging: Initial ID
 
-        # Path to the translation file
-        translation_file_path = 'resources/translate.txt'
+        # Check if the item ID exists in the ITEM_ID_TRANSLATION dictionary
+        if raw_item_id in self.ITEM_ID_TRANSLATION:
+            translated_id = self.ITEM_ID_TRANSLATION[raw_item_id]
+            print(
+                f"Debug: Found translation in ITEM_ID_TRANSLATION for {raw_item_id}: {translated_id}.")  # Debugging: Found translation in dictionary
+            return translated_id
 
+        # Select the appropriate file based on whether the ID starts with 'Mov_'
+        translation_file_path = 'resources/movables.txt' if raw_item_id.startswith(
+            'Mov_') else 'resources/translate.txt'
+        item_id_for_search = raw_item_id[4:] if raw_item_id.startswith('Mov_') else raw_item_id
+
+        # First attempt to find a translation
+        found, id = self.attempt_translation(translation_file_path, item_id_for_search)
+        if found:
+            return id  # Return translation found on first try
+
+        modified_id = item_id_for_search
+        # If no translation found and the ID was originally prefixed with 'Mov_', modify the ID
+        if raw_item_id.startswith('Mov_'):
+            modified_id = self.modify_id(item_id_for_search)
+            if modified_id != item_id_for_search:
+                print(f"Debug: Modified {item_id_for_search} to {modified_id}")  # Debugging: Show modification
+            # Second attempt to find a translation with modified ID
+            found, id = self.attempt_translation(translation_file_path, modified_id)
+            if found:
+                return id  # Return translation found on second try
+
+        # Adjust the final return statement to return the modified ID when no translation is found
+        if raw_item_id.startswith('Mov_') and modified_id != item_id_for_search:
+            final_id = 'Mov_' + modified_id  # Prepend 'Mov_' if the original ID had it
+            print(f"Debug: No translation found, returning modified ID: {final_id}.")  # Debugging: No translation found
+            return final_id
+        else:
+            print(
+                f"Debug: No translation found for {raw_item_id}, returning original ID.")  # Debugging: No translation found
+            return raw_item_id
+
+    def attempt_translation(self, file_path, item_id):
         try:
-            # Open the translation file
-            with open(translation_file_path, 'r') as file:
+            with open(file_path, 'r') as file:
                 for line in file:
-                    # Check if the raw item ID is in the current line
-                    if raw_item_id in line:
-                        # Look for the equals sign to extract the portion after it
+                    if item_id in line:
                         parts = line.split('=')
-                        if len(parts) > 1:
-                            # Find the first quotation mark after the equals sign
-                            start_pos = parts[1].find('"') + 1  # Start of the cleaned ID
-                            end_pos = parts[1].find('"', start_pos)  # End of the cleaned ID
-                            if start_pos > 0 and end_pos > 0:
-                                # Extract the cleaned ID from within the quotation marks
+                        if len(parts) > 1 and '"' in parts[1]:
+                            start_pos = parts[1].find('"') + 1
+                            end_pos = parts[1].find('"', start_pos)
+                            if end_pos > start_pos:
                                 id = parts[1][start_pos:end_pos]
-                                return id  # Return the cleaned ID
-            # If the raw item ID is not found in the file or dictionary, return it as is
-            return raw_item_id
-        except FileNotFoundError:
-            # Handle the case where the translation file does not exist
-            print(f"Translation file not found at {translation_file_path}.")
-            return raw_item_id
+                                # Updated debugging print statement as per your request
+                                print(f"Debug: Found translation for {item_id}: {id}. Outputting as: {id}")
+                                return True, id
+            return False, item_id
         except Exception as e:
-            # Handle other possible exceptions
-            print(f"An error occurred: {e}")
-            return raw_item_id
+            print(f"Debug: An error occurred while attempting translation: {e}")
+            return False, item_id
+
+    def modify_id(self, item_id):
+        # Insert underscore before uppercase letters following a lowercase letter,
+        # ignoring the start of the ID and the first capital letter.
+        modified_id = re.sub(r'([a-z])([A-Z])', r'\1_\2', item_id)
+        return modified_id
