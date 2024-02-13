@@ -179,17 +179,16 @@ class Distribution:
         id = id.replace('_', ' ')  # Replace underscores with spaces for readability
         return id
 
-    import re
-
     def cleanup_item_id(self, raw_item_id):
         print(f"Debug: Starting cleanup for item ID: {raw_item_id}")  # Debugging: Initial ID
 
-        # Check if the item ID exists in the ITEM_ID_TRANSLATION dictionary
-        if raw_item_id in self.ITEM_ID_TRANSLATION:
-            translated_id = self.ITEM_ID_TRANSLATION[raw_item_id]
-            print(
-                f"Debug: Found translation in ITEM_ID_TRANSLATION for {raw_item_id}: {translated_id}.")  # Debugging: Found translation in dictionary
-            return translated_id
+        # Iterate over dictionary items
+        for key, value in self.ITEM_ID_TRANSLATION.items():
+            # Check if the item ID contains the key phrase, indicating a match
+            if key in raw_item_id:
+                print(
+                    f"Debug: Found translation in ITEM_ID_TRANSLATION for {raw_item_id}: {value}.")  # Debugging: Found translation in dictionary
+                return value
 
         # Select the appropriate file based on whether the ID starts with 'Mov_'
         translation_file_path = 'resources/movables.txt' if raw_item_id.startswith(
