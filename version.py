@@ -1,4 +1,4 @@
 VERSION = {
-    'PROJECT': '1',
-    'PZ': '41.50 IWBUMS'
+    'PROJECT': '1.1',
+    'PZ': '41.78.16'
 }

@@ -1,5 +1,3 @@
-import string
-import re
 import lupa
 from item import Item
 
@@ -29,89 +27,8 @@ class Distribution:
 
     LUA_TYPE_TABLE = 'table'
 
-    # Translates ids before anything else occurs, matching keys get replaced with their value. Anything captured by this
-    # list will not go through any further filtering.
-    ITEM_ID_PRE_TRANSLATION = {
-        'Hat_Army': 'Army Hat',
-        'CanoePadelX2': 'Canoe Padels'
-    }
-
-    # If any of these strings exist anywhere in a item's id, we do not strip numbers from it.
-    # This prevents stripping certain ammo types.
-    ITEM_ID_INTEGER_TRUNCATE_BLACKLIST_AGGRESSIVE = [
-        'Bullets',
-        'Box'
-    ]
-
-    # Remove any instances of the following from ids, the order is important!
-    ITEM_ID_BLACKLIST = [
-        'DOWN',
-        'Bag_',
-        'farming.',
-        'camping.',
-        'Radio.',
-        'Base.',
-        '_DefaultTEXTURE_TINT',
-        '_DefaultTEXTURE_HUE',
-        '_DefaultTEXTURE',
-        '_DefaultDECAL_TINT',
-        '_Short',
-        '_Knees',
-        '_Normal',
-        '_Long',
-        '_Ankle',
-        'Hat_',
-        '_TINT',
-        'TINT',
-        'TEXTURE',
-        '_Full',
-        'Full',
-        '_Random',
-        '_Pattern',
-        '_Red',
-        '_Green',
-        '_Yellow',
-        '_Blue',
-        '_WhiteLongSleeve',
-        '_White',
-        '_Black',
-        '_DiamondPattern'
-    ]
-
-    # If any of the following exists anywhere in a id, replace the entire id with the value.
-    ITEM_ID_TRANSLATION_AGGRESSIVE = {
-        'Gloves_Leather': 'Gloves Leather',
-        'Map': 'Map',
-        'Bracelet': 'Bracelet',
-        'Earring': 'Earring',
-        'NoseRing_': 'Nose Ring',
-        'NoseStud_': 'Nose Stud',
-        'Necklace': 'Necklace',
-        'HairDye': 'Hair Dye',
-        'BowTie': 'Bow Tie',
-        'Ring_': 'Ring',
-        'WristWatch_Right_Classic': 'Watch Classic',
-        'WristWatch_Left_Classic': 'Watch Classic',
-        'WristWatch_Right_Digital': 'Watch Digital',
-        'WristWatch_Left_Digital': 'Watch Digital'
-    }
-
-    # After all previous steps, translate any matching ids to the following values.
-    # If translation occurs, injection of whitespace will not occur!
+    # Translate any matching ids to the following values.
     ITEM_ID_TRANSLATION = {
-        'HandTorch': 'Flashlight',
-        'Bullets38Box': '38 Box',
-        'Bullets44Box': '44 Box',
-        'Bullets45Box': '45 Box',
-        'Bullets38': 'Bullets 38',
-        'Bullets9mm': '9mm_Rounds|Bullets 9mm',
-        'Bullets9mmBox': '9mm_Rounds|9mm Box',
-        'LaCrosseStick': 'Lacrosse Stick',
-        'SPHhelmet': 'SPH Helmet', # No idea what this actually is...
-        'TVDinner': 'TV Dinner',
-        'CDplayer': 'CD Player',
-        'ALICEpack_Army': 'Large_Backpack|ALICE Pack - Army',
-        'ALICEpack': 'Large_Backpack|ALICE Pack',
         'BookCarpentry': 'Skill_Books|Skill Book - Carpentry',
         'BookCooking': 'Skill_Books|Skill Book - Cooking',
         'BookElectrician': 'Skill_Books|Skill Book - Electrician',
@@ -133,7 +50,6 @@ class Distribution:
         'MechanicMag': 'Recipe_Magazines| Recipe Magazine - Mechanic',
         'MetalworkMag': 'Recipe_Magazines| Recipe Magazine - Metalworking',
         'RadioMag': 'Recipe_Magazines| Recipe Magazine - Radio',
-        'NormalHikingBag': 'Normal Hiking Bag',
         'PillsAntiDep': 'Antidepressants',
         'PillsBeta': 'Beta Blockers',
         'PillsSleepingTablets': 'Sleeping Tablets',
@@ -227,9 +143,8 @@ class Distribution:
 
     def add_item(self, item_id, container_id, cleanup=True):
         if cleanup:
-            item_id = self.cleanup_id(item_id)
-
-        container_id = self.cleanup_id(container_id)
+            item_id = self.cleanup_item_id(item_id)
+        container_id = self.cleanup_container_id(container_id)
 
         item = self.items.get(item_id)
 
@@ -240,40 +155,44 @@ class Distribution:
         item.containers.add(container_id)
         self.containers.add(container_id)
 
-    def cleanup_id(self, id):
-        id_pre_translation_entry = Distribution.ITEM_ID_PRE_TRANSLATION.get(id)
-
-        if id_pre_translation_entry:
-            return id_pre_translation_entry
-
-        for blacklist_entry in Distribution.ITEM_ID_BLACKLIST:
-            id = id.replace(blacklist_entry, '')
-
-        trim_digits = True
-
-        for blacklist_entry in Distribution.ITEM_ID_INTEGER_TRUNCATE_BLACKLIST_AGGRESSIVE:
-            if blacklist_entry in id:
-                trim_digits = False
-                break
-
-        if trim_digits:
-            id = id.rstrip(string.digits)
-
-        aggressive_translation_applied = False
-        for key, value in Distribution.ITEM_ID_TRANSLATION_AGGRESSIVE.items():
-            if key in id:
-                id = value
-                aggressive_translation_applied = True
-                break
-
-        if not aggressive_translation_applied:
-            id_translation = Distribution.ITEM_ID_TRANSLATION.get(id)
-
-            if id_translation:
-                id = id_translation
-            else:
-                if ' ' not in id:
-                    id = id.replace('_', '')
-                    id = re.sub(r'(\w)([A-Z])', r'\1 \2', id)
-
+    def cleanup_container_id(self, id):
+        id = id.strip()  # Remove leading and trailing whitespace
+        id = id.replace('_', ' ')  # Replace underscores with spaces for readability
         return id
+
+    def cleanup_item_id(self, raw_item_id):
+        # Check each key in the ITEM_ID_TRANSLATION dictionary to see if it's found in the raw item ID
+        for key, value in self.ITEM_ID_TRANSLATION.items():
+            if key in raw_item_id:
+                # If a match is found anywhere in the raw item ID, return the corresponding translated value
+                return value
+
+        # Path to the translation file
+        translation_file_path = 'resources/translate.txt'
+
+        try:
+            # Open the translation file
+            with open(translation_file_path, 'r') as file:
+                for line in file:
+                    # Check if the raw item ID is in the current line
+                    if raw_item_id in line:
+                        # Look for the equals sign to extract the portion after it
+                        parts = line.split('=')
+                        if len(parts) > 1:
+                            # Find the first quotation mark after the equals sign
+                            start_pos = parts[1].find('"') + 1  # Start of the cleaned ID
+                            end_pos = parts[1].find('"', start_pos)  # End of the cleaned ID
+                            if start_pos > 0 and end_pos > 0:
+                                # Extract the cleaned ID from within the quotation marks
+                                id = parts[1][start_pos:end_pos]
+                                return id  # Return the cleaned ID
+            # If the raw item ID is not found in the file or dictionary, return it as is
+            return raw_item_id
+        except FileNotFoundError:
+            # Handle the case where the translation file does not exist
+            print(f"Translation file not found at {translation_file_path}.")
+            return raw_item_id
+        except Exception as e:
+            # Handle other possible exceptions
+            print(f"An error occurred: {e}")
+            return raw_item_id

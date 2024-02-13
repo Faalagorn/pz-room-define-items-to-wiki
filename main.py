@@ -76,7 +76,7 @@ def main():
             if description:
                 export_result = '\n' + export_result + description
 
-            export_result = export_result + '\n{| class="wikitable sortable"'
+            export_result = export_result + '\n{| class="wikitable theme-blue"'
             export_result = export_result + '\n|-'
             # header = '! Header text !! Header text !! Header text'
             export_result = export_result + '\n! Container !! Items'
