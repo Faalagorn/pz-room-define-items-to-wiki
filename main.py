@@ -67,7 +67,7 @@ def main():
                                     'to the \'\'Distributions.lua\'\' and \'\'ProceduralDistributions.lua\'\' files ' \
                                     'in your Project Zomboid install directory. '
 
-    export_result = export_result + '\n\n== Room Defines and Item Spawns =='
+    export_result = export_result + '\n\n==Room definitions and item spawns=='
 
     for entry in sorted(distribution_entries, key=lambda e: e.name.lower()):
         if entry.type == Distribution.TYPE_ROOM:
@@ -99,7 +99,7 @@ def main():
                     export_result = export_result + '\n|-'
                     export_result = export_result + '\n' + result[:-2]
 
-            export_result = export_result + '\n|}'
+            export_result = export_result + '\n|}\n'
 
     exports_file_path = root_path.joinpath(EXPORTS_FILE_PATH)
     if exports_file_path.exists():
